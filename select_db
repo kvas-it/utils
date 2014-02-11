@@ -1,0 +1,46 @@
+#!/bin/sh
+
+ROOT=/Users/kvas/opt/zope-dev
+VAR=$ROOT/var
+
+if [ "k$1" == "k" ]; then
+    echo Usage $0 '<db_name>'
+    echo
+    echo Available databases:
+    for i in `ls $VAR/DB/`; do
+	echo "    $i"
+    done
+    exit 1
+fi
+
+check_link () {
+    if [ -e $1 ]; then
+	if [ ! -L $1 ]; then
+	    echo "$1 is not a symlink, remove it manually if that's what you want"
+	    exit 2
+	fi
+    fi
+}
+
+if [ ! -d $VAR/DB/$1 ]; then
+    echo "$VAR/DB/$1 doesn't exist"
+    exit 3
+fi
+
+for i in $VAR/Data.fs $VAR/Data.fs.index $ROOT/access $ROOT/Products; do
+    check_link $i
+done
+
+for i in $VAR/Data.fs $VAR/Data.fs.index $ROOT/access $ROOT/Products; do
+    rm -f $i
+done
+
+ln -s $VAR/DB/$1/Data.fs $VAR/Data.fs
+ln -s $VAR/DB/$1/Data.fs.index $VAR/Data.fs.index
+ln -s $VAR/DB/$1/access $ROOT/access
+
+if [ -e $VAR/DB/$1/Products ]; then
+    ln -s $VAR/DB/$1/Products $ROOT/Products
+else
+    ln -s $ROOT/DefaultProducts $ROOT/Products
+fi

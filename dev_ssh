@@ -1,0 +1,28 @@
+#!/bin/sh
+
+
+if [ 'x$1' == 'x' ]; then
+	echo "usage: $0 [user@]host [...]"
+	echo
+	echo "ssh to a server through a tunner through dev"
+	exit 1
+fi
+
+HOST=$1
+shift
+
+if echo $HOST | grep -q '@'; then
+	USER=`echo $HOST | cut -d@ -f1`@
+	HOST=`echo $HOST | cut -d@ -f2`
+else
+	USER=
+	HOST=$HOST
+fi
+
+TUNNEL_PORT=54321
+
+echo ssh dev -L$TUNNEL_PORT:$HOST:22 -f sleep 10
+ssh dev -L$TUNNEL_PORT:$HOST:22 -f sleep 10
+
+echo ssh -p $TUNNEL_PORT ${USER}localhost $*
+ssh -p $TUNNEL_PORT ${USER}localhost $*

@@ -1,0 +1,59 @@
+#!/usr/bin/env python
+
+import envoy
+import py.path
+import os
+
+
+CODE_ROOT = os.path.expanduser('~/prog')
+TAGS_ROOT = os.path.expanduser('~/.mytags')
+
+
+def source_dir_filter(path):
+    """Filter for source directories."""
+    if path.join('__init__.py').check():
+        return True
+    if path.join('setup.py').check():
+        return True
+    return False
+
+
+def get_source_dirs():
+    """Return the list of source directories to be indexed."""
+    root = py.path.local(CODE_ROOT)
+    # return [root.join('FormAbstract')]
+    return root.listdir(source_dir_filter)
+
+
+def generate_tags(source_dir):
+    """Generate tags for the source directory."""
+    tags_file = py.path.local(TAGS_ROOT).join(source_dir.basename)
+    source_files = source_dir.visit('*.py')
+
+    if tags_file.check():
+        tags_mtime = tags_file.mtime()
+        source_mtime = max(f.mtime() for f in source_files)
+        if tags_mtime > source_mtime:
+            return False
+
+    return run_ctags(tags_file, source_files)
+
+
+def run_ctags(tags_file, source_files):
+    """Run ctags to generate tags from ``source_files``."""
+    envoy.run('ctags -o {} -L -'.format(tags_file.relto('')),
+            data='\n'.join(sf.relto('') for sf in source_files))
+    return True
+
+
+for source_dir in get_source_dirs():
+    flag = generate_tags(source_dir)
+    if flag:
+        print 'Generated tags for', source_dir
+    else:
+        print 'Skipped', source_dir
+
+
+print 'Merging all tags'
+os.chdir(TAGS_ROOT)
+os.system('cat * | sort >.all')

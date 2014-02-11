@@ -1,0 +1,5 @@
+#!/bin/sh
+
+sudo killall WindowServer
+sleep 10
+sudo killall -9 WindowServer

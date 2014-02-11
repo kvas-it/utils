@@ -1,0 +1,4 @@
+#!/bin/sh
+
+ssh zope@dev -R:2222:svn:22 'deploy -y HEAD -r svn+ssh://localhost//data/subversion/repositories/cdmis && zopectl restart'
+

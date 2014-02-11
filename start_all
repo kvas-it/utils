@@ -1,0 +1,7 @@
+#!/bin/sh
+
+echo Starting nginx
+sudo start_nginx
+echo Starting mysql
+sudo start_mysql
+echo All done
