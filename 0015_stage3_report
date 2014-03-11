@@ -1,5 +1,0 @@
-#!/bin/sh
-
-echo "h3. Active requirements and tasks"
-echo
-jira_version_report ACCRWF '3.0' -r management incomplete postponed
