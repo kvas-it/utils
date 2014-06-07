@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 
+import os
 import click
 import collections
 import re
@@ -26,6 +27,11 @@ class Context(object):
                     file, template, signature = m.groups()
                     self.invocations[template].append((file, signature))
         return self.invocations
+
+    def get_mt_references(self):
+        if not hasattr(self, 'mt_references'):
+            self.mt_references = collections.defaultdict(set)
+        return self.mt_references
 
     def get_references(self):
         if not hasattr(self, 'references'):
@@ -137,13 +143,81 @@ def print(context, html):
     if html:
         click.echo(context.summary_table())
     else:
+        tmpl_count = 0
+        inv_count = 0
         for t_name, t_info in sorted(context.get_summary().items()):
             click.echo('[%s]' % t_name)
+            tmpl_count += 1
             for inv in t_info['invocations']:
                 click.echo(' inv: %s (%s)' % inv)
+                inv_count += 1
             if context.include_refs:
                 for ref in t_info['references']:
                     click.echo(' var: %s' % ref)
+
+        click.echo('\nTemplates: %d, Invocations: %d' %
+                (tmpl_count, inv_count))
+
+
+class Convertor(object):
+    """Converts dtml templates to mailplator templates."""
+
+    def __init__(self, dtml_root, mp_root):
+        self.dtml_root = dtml_root
+        self.mp_root = mp_root
+
+    def read(self, t_name):
+        """Read the dtml template."""
+        with open(os.path.join(self.dtml_root, t_name + '.dtml')) as fp:
+            return fp.read()
+
+    def write(self, t_name, content):
+        """Write mpt template."""
+        with open(os.path.join(self.mp_root, t_name + '.mpt'), 'w') as fp:
+            fp.write(content)
+
+    def convert(self, t_name):
+        """Convert one templates."""
+        def convert_close(match):
+            type = match.group(1)
+            if type.startswith('in'):
+                return '{end for}'
+            elif type.startswith('if'):
+                return '{end if}'
+
+        def convert_open(match):
+            type = match.group(1)
+            if type == 'var':
+                return '{' + match.group(3) + '}'
+            elif type == 'if':
+                return '{if ' + match.group(3) + '}'
+            elif type == 'in':
+                return '{for %s_item in %s}' % (match.group(5), match.group(3))
+            elif type in ['nmime', 'nboundary']:
+                return ''
+            else:
+                raise ValueError(match.groups(0))
+
+        dtml = self.read(t_name)
+        # <dtml-var expr="form.title_or_id()">
+        mpt = re.sub(r'</dtml-([^>]+)>', convert_close,
+                re.sub(r'<dtml-(\w+)\s*(expr="([^"]+)")?'
+                       r'(\s*prefix="([^"]+)")?[^>]*>',
+                    convert_open, dtml))
+        # click.echo(mpt)
+        self.write(t_name, mpt)
+
+
+@cli.command()
+@pass_context
+def convert(context):
+    """Convert dtml templates to mailplator templates."""
+    convertor = Convertor('faces/MessageTemplates', 'maint/message_templates')
+
+    for t_name, t_info in sorted(context.get_summary().items()):
+        click.echo('converting %s' % t_name)
+        convertor.convert(t_name)
+
 
 if __name__ == '__main__':
     cli()
