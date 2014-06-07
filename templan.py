@@ -2,12 +2,13 @@
 
 from __future__ import print_function
 
+import csv
 import os
 import click
 import collections
 import re
 import envoy
-
+from xml.etree import ElementTree as ET
 from ost.utils import confluence2
 
 
@@ -15,6 +16,7 @@ class Context(object):
     """Container for the template data."""
 
     sig_filter = ''
+    titles_file = ''
 
     def get_invocations(self):
         if not hasattr(self, 'invocations'):
@@ -62,6 +64,16 @@ class Context(object):
                     'invocations': sorted(self.invocations[t_name])
                 }
         return self.summary
+
+    def get_titles(self):
+        if not hasattr(self, 'titles'):
+            self.titles = {}
+            if self.titles_file:
+                with open(self.titles_file) as tf:
+                    for line in csv.reader(tf):
+                        if len(line) > 1 and line[0] and line[1]:
+                            self.titles[line[1]] = line[0]
+        return self.titles
 
     def summary_table(self):
         rows = ["""    <tr>
@@ -114,10 +126,13 @@ pass_context = click.make_pass_decorator(Context, ensure=True)
 @click.option('--sig', default='', help='Filter by signature')
 @click.option('--refs', is_flag=True,
         help='Include variable references information')
-def cli(context, sig, refs):
+@click.option('--titles-file', default='',
+        help='CSV file containing template titles')
+def cli(context, sig, refs, titles_file):
     """Script for analyzing e-mail templates in Accreditation."""
     context.sig_filter = sig
     context.include_refs = refs
+    context.titles_file = titles_file
 
 
 @cli.command()
@@ -217,6 +232,48 @@ def convert(context):
     for t_name, t_info in sorted(context.get_summary().items()):
         click.echo('converting %s' % t_name)
         convertor.convert(t_name)
+
+
+@cli.command()
+@pass_context
+def manifest(context):
+    """Create manifest.xml for template list."""
+    manifest = ET.Element('manifest')
+
+    for t_name, t_info in sorted(context.get_summary().items()):
+        if t_name in ('AppealRep', 'NewStat'):
+            continue
+        sig = t_info['invocations'][0][1]
+        if t_name.startswith('Team'):
+            type_name = 'team_template'
+        elif t_name.endswith('PAInit'):
+            type_name = 'pa_start_template'
+        elif sig.startswith('activity'):
+            if 'action' in sig:
+                type_name = 'activity_action_template'
+            else:
+                type_name = 'activity_template'
+        elif sig.startswith('completeness'):
+            type_name = 'activity_completeness_template'
+        elif sig.startswith('cycle'):
+            if 'member' in sig:
+                if 'action' in sig:
+                    type_name = 'cycle_team_template'
+                else:
+                    type_name = 'cycle_teammember_template'
+            else:
+                type_name = 'cycle_template'
+        elif sig.startswith('form'):
+            if t_name.startswith('Subm'):
+                type_name = 'form_template'
+            else:
+                type_name = 'review_template'
+
+        ET.SubElement(manifest, 'template', file=t_name + '.mpt',
+                type=type_name, id=t_name,
+                title=context.get_titles().get(t_name, t_name))
+
+    click.echo(ET.tostring(manifest))
 
 
 if __name__ == '__main__':
