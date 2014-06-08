@@ -8,6 +8,8 @@ import click
 import collections
 import re
 import envoy
+import StringIO
+
 from xml.etree import ElementTree as ET
 from ost.utils import confluence2
 
@@ -74,6 +76,17 @@ class Context(object):
                         if len(line) > 1 and line[0] and line[1]:
                             self.titles[line[1]] = line[0]
         return self.titles
+
+    def summary_table_csv(self):
+        output = StringIO.StringIO()
+        csvw = csv.writer(output)
+
+        for t_name, t_info in sorted(self.get_summary().items()):
+            t_inv = sorted(t_info['invocations'])
+            for inv_file, inv_sig in t_inv:
+                csvw.writerow([t_name, inv_file, inv_sig])
+
+        return output.getvalue()
 
     def summary_table(self):
         rows = ["""    <tr>
@@ -153,10 +166,13 @@ def post(context, space, page):
 @cli.command()
 @pass_context
 @click.option('--html', is_flag=True, help='HTML output')
-def print(context, html):
+@click.option('--csv', is_flag=True, help='CSV output')
+def print(context, html, csv):
     """Print the summary to the screen."""
     if html:
-        click.echo(context.summary_table())
+        click.echo(context.summary_table(), nl=False)
+    elif csv:
+        click.echo(context.summary_table_csv(), nl=False)
     else:
         tmpl_count = 0
         inv_count = 0
