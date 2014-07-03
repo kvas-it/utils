@@ -29,6 +29,7 @@ class Context(object):
                 m = rxp.match(line)
                 if m:
                     file, template, signature = m.groups()
+                    if '.hg/' in file: continue
                     self.invocations[template].append((file, signature))
         return self.invocations
 
@@ -56,7 +57,9 @@ class Context(object):
     def get_summary(self):
         if not hasattr(self, 'summary'):
             self.summary = {}
-            for t_name in self.get_references():
+            for t_name in set(self.get_references().keys() +
+                              self.get_invocations().keys()):
+                click.echo(t_name)
                 if not [inv for inv in self.get_invocations()[t_name]
                         if self.sig_filter in inv[1]]:
                     continue
