@@ -59,7 +59,6 @@ class Context(object):
             self.summary = {}
             for t_name in set(self.get_references().keys() +
                               self.get_invocations().keys()):
-                click.echo(t_name)
                 if not [inv for inv in self.get_invocations()[t_name]
                         if self.sig_filter in inv[1]]:
                     continue
