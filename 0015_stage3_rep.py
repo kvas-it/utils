@@ -18,7 +18,7 @@ week = datetime.timedelta(7)
 day = datetime.timedelta(1)
 today = datetime.datetime.today()
 
-weekly = [datetime.datetime(2014, 3, 10) + week * i for i in range(13)]
+weekly = [datetime.datetime(2014, 3, 10) + week * i for i in range(15)]
 weekly = [w for w in weekly if w < today]
 
 start_of_week = datetime.datetime(*(today -
