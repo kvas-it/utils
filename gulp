@@ -1,0 +1,10 @@
+#!/bin/sh
+# A wrapper for running gulp on node.js projects.
+
+GULP=node_modules/gulp/bin/gulp.js 
+
+if [ -f ${GULP} ]; then
+	${GULP} $*
+else
+	echo "${GULP} not found."
+fi 
