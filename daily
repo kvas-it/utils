@@ -1,0 +1,11 @@
+#!/bin/sh
+#
+# Wrapper for logging time on daily meetings.
+
+DURATION=$1
+
+if [ "x$DURATION" == "x" ]; then
+	DURATION=30m
+fi
+
+jtt log ANAIS-1451 "$DURATION" 10:00 "Daily meeting"
